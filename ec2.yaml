@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: | 
+  Create PROD and Staging environment for Carved Rock
+  website servers
+Parameters:
+  EC2Key:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 keypair
+    Default: A4L
+
+Resources:
+
+  WebsiteServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0c02fb55956c7d316
+      InstanceType: t2.micro
+      KeyName: !Ref EC2Key
+      SecurityGroupIds:
+        - !Ref CarvedRockWebSiteSecGrp
+      UserData: !Base64 |
+        #!/bin/bash -ex
+        # put your script here
+      Tags:
+        - Key: Name
+          Value: Carved-Rock-Website
+
+  WebsiteServerStage:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0c02fb55956c7d316
+      InstanceType: t2.micro
+      KeyName: !Ref EC2Key
+      SecurityGroupIds:
+        - !Ref CarvedRockWebSiteSecGrp
+      UserData: !Base64 |
+        #!/bin/bash -ex
+        yum update -y
+        yum install -y httpd
+        systemctl start httpd
+        systemctl enable httpd
+        usermod -a -G apache ec2-user
+        chown -R ec2-user:apache /var/www
+        chmod 2775 /var/www
+        find /var/www -type d -exec chmod 2775 {} \;
+        find /var/www -type f -exec chmod 0664 {} \;
+      Tags:
+        - Key: Name
+          Value: Carved-Rock-Website-Staging
+
+  CarvedRockWebSiteSecGrp:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: CarvedRockWebSiteSecGrp
+      GroupDescription: Security group for WEB servers
+      VpcId: vpc-56cea02b
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIpv6: ::/0
+      Tags:
+        - Key: Name
+          Value: Carved-Rock-Website-Sg
+          
